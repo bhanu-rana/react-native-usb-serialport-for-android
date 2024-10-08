@@ -1,8 +1,10 @@
 package com.bastengao.usbserialport;
 
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
@@ -41,11 +43,13 @@ public class UsbSerialportForAndroidModule extends ReactContextBaseJavaModule im
     public static final String CODE_DEVICE_NOT_OPEN_OR_CLOSED = "device_not_open_or_closed";
 
     private final ReactApplicationContext reactContext;
+    private Promise permissionPromise; // To hold the promise for permission requests
     private final Map<Integer, UsbSerialPortWrapper> usbSerialPorts = new HashMap<Integer, UsbSerialPortWrapper>();
 
     public UsbSerialportForAndroidModule(ReactApplicationContext reactContext) {
         super(reactContext);
         this.reactContext = reactContext;
+        registerReceiver();
     }
 
     @Override
@@ -67,6 +71,25 @@ public class UsbSerialportForAndroidModule extends ReactContextBaseJavaModule im
         constants.put("CODE_DEVICE_NOT_OPEN_OR_CLOSED", CODE_DEVICE_NOT_OPEN_OR_CLOSED);
         return constants;
     }
+
+    private void registerReceiver() {
+        IntentFilter filter = new IntentFilter(INTENT_ACTION_GRANT_USB);
+        reactContext.registerReceiver(usbReceiver, filter);
+    }
+
+    private final BroadcastReceiver usbReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+            if (INTENT_ACTION_GRANT_USB.equals(action)) {
+                UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                boolean isGranted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
+                if (permissionPromise != null) {
+                    permissionPromise.resolve(isGranted ? 1 : 0);
+                    permissionPromise = null; // Clear the promise reference
+                }
+        }
+    };
 
     @ReactMethod
     public void list(Promise promise) {
@@ -96,9 +119,10 @@ public class UsbSerialportForAndroidModule extends ReactContextBaseJavaModule im
             return;
         }
 
+        // Store the promise to resolve it later
+        this.permissionPromise = promise;
         PendingIntent usbPermissionIntent = PendingIntent.getBroadcast(getCurrentActivity(), 0, new Intent(INTENT_ACTION_GRANT_USB), PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT);
         usbManager.requestPermission(device, usbPermissionIntent);
-        promise.resolve(0);
     }
 
     @ReactMethod

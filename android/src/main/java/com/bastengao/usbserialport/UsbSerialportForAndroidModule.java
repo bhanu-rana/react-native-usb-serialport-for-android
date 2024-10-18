@@ -88,6 +88,7 @@ public class UsbSerialportForAndroidModule extends ReactContextBaseJavaModule im
                     permissionPromise.resolve(isGranted ? 1 : 0);
                     permissionPromise = null; // Clear the promise reference
                 }
+            }
         }
     };
 
@@ -164,7 +165,7 @@ public class UsbSerialportForAndroidModule extends ReactContextBaseJavaModule im
         }
 
         UsbDeviceConnection connection = usbManager.openDevice(driver.getDevice());
-        if(connection == null) {
+        if (connection == null) {
             if (!usbManager.hasPermission(driver.getDevice())) {
                 promise.reject(CODE_PERMISSION_DENIED, "connection failed: permission denied");
             } else {
@@ -179,8 +180,9 @@ public class UsbSerialportForAndroidModule extends ReactContextBaseJavaModule im
             port.setParameters(baudRate, dataBits, stopBits, parity);
         } catch (IOException e) {
             try {
-                 port.close();
-            } catch (IOException ignored) {}
+                port.close();
+            } catch (IOException ignored) {
+            }
             promise.reject(CODE_OPEN_FAILED, "connection failed", e);
             return;
         }
@@ -226,7 +228,7 @@ public class UsbSerialportForAndroidModule extends ReactContextBaseJavaModule im
             @Override
             public void run() {
                 reactContext.getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
-                    .emit(eventName, event);
+                        .emit(eventName, event);
             }
         });
     }
@@ -247,7 +249,7 @@ public class UsbSerialportForAndroidModule extends ReactContextBaseJavaModule im
         byte[] data = new byte[len / 2];
         for (int i = 0; i < len; i += 2) {
             data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
-                + Character.digit(s.charAt(i + 1), 16));
+                    + Character.digit(s.charAt(i + 1), 16));
         }
         return data;
     }
